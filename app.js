@@ -1,3 +1,9 @@
+// --- Error handler ---
+window.onerror = function(msg, src, line) {
+  var app = document.getElementById('app');
+  if (app) app.innerHTML = '<p style="color:red">Error: ' + msg + ' (line ' + line + ' in ' + src + ')</p>';
+};
+
 // --- Helpers ---
 
 function base64urlEncode(str) {
@@ -42,38 +48,43 @@ function navigate(hash) {
 }
 
 window.addEventListener('hashchange', render);
-window.addEventListener('DOMContentLoaded', render);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', render);
+} else {
+  render();
+}
 
 // --- Rendering ---
 
 function render() {
   const app = document.getElementById('app');
-  const route = getRoute();
+  if (!app) return;
+  try {
+    const route = getRoute();
 
-  if (route.page === 'profile') {
-    const person = PEOPLE.find(p => p.id === route.id);
-    if (person) {
-      app.innerHTML = renderProfile(person);
-      initRadarChart(person);
-      animateBars();
-    } else {
-      app.innerHTML = '<p>Person not found.</p>';
-    }
-  } else if (route.page === 'custom') {
-    try {
+    if (route.page === 'profile') {
+      const person = PEOPLE.find(p => p.id === route.id);
+      if (person) {
+        app.innerHTML = renderProfile(person);
+        initRadarChart(person);
+        animateBars();
+      } else {
+        app.innerHTML = '<p>Person not found.</p>';
+      }
+    } else if (route.page === 'custom') {
       const person = JSON.parse(base64urlDecode(route.data));
       app.innerHTML = renderProfile(person);
       initRadarChart(person);
       animateBars();
-    } catch (e) {
-      app.innerHTML = '<p>Invalid profile data.</p>';
+    } else {
+      app.innerHTML = renderHome();
+      attachCardListeners();
     }
-  } else {
-    app.innerHTML = renderHome();
-    attachCardListeners();
-  }
 
-  window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  } catch (e) {
+    app.innerHTML = '<p style="color:red">Render error: ' + e.message + '</p>';
+  }
 }
 
 // --- Home Page ---
