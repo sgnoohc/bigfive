@@ -1,3 +1,4 @@
 package/
 *.tgz
 generate_answers.js
+questions.js

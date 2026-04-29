@@ -10,7 +10,13 @@ function base64urlDecode(str) {
   return atob(str);
 }
 
-function scoreLabel(score) {
+function scoreLevel(score) {
+  if (score >= 70) return "high";
+  if (score >= 40) return "neutral";
+  return "low";
+}
+
+function scoreLabelText(score) {
   if (score >= 70) return "High";
   if (score >= 40) return "Average";
   return "Low";
@@ -121,48 +127,7 @@ function renderProfile(person) {
     `;
   }).join('');
 
-  const domainDetails = DOMAIN_KEYS.map(k => {
-    const info = DOMAIN_INFO[k];
-    const score = person.scores[k].domain;
-    const facets = person.scores[k].facets;
-
-    const facetBars = info.facets.map((fname, i) => {
-      const fScore = facets[i];
-      return `
-        <div class="facet-row">
-          <div class="facet-label">${fname}</div>
-          <div class="facet-bar-bg">
-            <div class="facet-bar-fill bar-animate" style="background: ${info.color};" data-width="${fScore}%"></div>
-          </div>
-          <div class="facet-score">${fScore}</div>
-        </div>
-      `;
-    }).join('');
-
-    const rationale = person.rationale && person.rationale[k]
-      ? `<div class="rationale">
-           <div class="rationale-label">Why this score?</div>
-           <p>${person.rationale[k]}</p>
-         </div>`
-      : '';
-
-    return `
-      <div class="domain-detail">
-        <div class="domain-detail-header" onclick="this.parentElement.classList.toggle('collapsed')">
-          <h3 style="color: ${info.color}">
-            ${info.name}
-            <span class="toggle-icon">&#9660;</span>
-          </h3>
-          <span class="score-badge" style="background: ${info.color}">${score} &mdash; ${scoreLabel(score)}</span>
-        </div>
-        <div class="domain-detail-body">
-          <div class="domain-description">${info.description}</div>
-          ${facetBars}
-          ${rationale}
-        </div>
-      </div>
-    `;
-  }).join('');
+  const domainDetails = DOMAIN_KEYS.map(k => renderDomainResult(person, k)).join('');
 
   const shareData = base64urlEncode(JSON.stringify({
     id: person.id,
@@ -199,8 +164,6 @@ function renderProfile(person) {
 
     ${domainDetails}
 
-    ${renderQuestionResponses(person)}
-
     <div class="share-section">
       <button class="share-btn" onclick="copyShareLink(this, '${shareUrl.replace(/'/g, "\\'")}')">
         Copy Shareable Link
@@ -210,76 +173,67 @@ function renderProfile(person) {
   `;
 }
 
-// --- Question Responses ---
+// --- Domain Result (bigfive-style) ---
 
-const CHOICE_LABELS = ['Very Inaccurate', 'Moderately Inaccurate', 'Neutral', 'Moderately Accurate', 'Very Accurate'];
+function renderDomainResult(person, k) {
+  const info = DOMAIN_INFO[k];
+  const score = person.scores[k].domain;
+  const facets = person.scores[k].facets;
+  const level = scoreLevel(score);
+  const rt = (typeof RESULT_TEXT !== 'undefined') ? RESULT_TEXT[k] : null;
 
-function renderQuestionResponses(person) {
-  const answers = (typeof ANSWERS !== 'undefined') ? ANSWERS[person.id] : null;
-  if (!answers || typeof QUESTIONS === 'undefined') return '';
+  // Domain-level result text
+  const domainResultText = rt ? rt.results[level] : '';
+  const domainDesc = rt ? rt.short : info.description;
 
-  // Group questions by domain then facet
-  const grouped = {};
-  DOMAIN_KEYS.forEach(k => { grouped[k] = {}; });
-  QUESTIONS.forEach((q, i) => {
-    if (!grouped[q.d][q.f]) grouped[q.d][q.f] = [];
-    grouped[q.d][q.f].push({ ...q, idx: i, answer: answers[i] });
-  });
-
-  const sections = DOMAIN_KEYS.map(k => {
-    const info = DOMAIN_INFO[k];
-    const facetNames = info.facets;
-
-    const facetSections = Object.keys(grouped[k]).sort((a,b) => a - b).map(f => {
-      const questions = grouped[k][f];
-      const rows = questions.map(q => {
-        const score = q.k === 'plus' ? q.answer : (6 - q.answer);
-        const dots = [1,2,3,4,5].map(v =>
-          `<span class="likert-dot ${v === q.answer ? 'active' : ''}" style="${v === q.answer ? 'background:' + info.color : ''}" title="${CHOICE_LABELS[v-1]}">${v === q.answer ? v : ''}</span>`
-        ).join('');
-
-        return `
-          <div class="q-row">
-            <div class="q-text">${q.t}</div>
-            <div class="q-likert">${dots}</div>
-            <div class="q-score-val" style="color: ${info.color}">${score}</div>
-          </div>
-        `;
-      }).join('');
-
-      return `
-        <div class="q-facet-group">
-          <div class="q-facet-name">${facetNames[f - 1]}</div>
-          ${rows}
-        </div>
-      `;
-    }).join('');
+  // Facet details with descriptions and score bars
+  const facetRows = info.facets.map((fname, i) => {
+    const fScore = facets[i];
+    const fLevel = scoreLevel(fScore);
+    const facetText = rt && rt.facets[i + 1] ? rt.facets[i + 1].text : '';
+    const facetTitle = rt && rt.facets[i + 1] ? rt.facets[i + 1].title : fname;
 
     return `
-      <div class="q-domain-section">
-        <div class="q-domain-header" onclick="this.parentElement.classList.toggle('q-collapsed')">
-          <h3 style="color: ${info.color}">
-            ${info.name} &mdash; Question Responses
-            <span class="toggle-icon">&#9660;</span>
-          </h3>
-        </div>
-        <div class="q-domain-body">
-          <div class="q-legend">
-            <span>1 = Very Inaccurate</span>
-            <span>3 = Neutral</span>
-            <span>5 = Very Accurate</span>
+      <div class="result-facet">
+        <div class="result-facet-header">
+          <div class="facet-row">
+            <div class="facet-label">${facetTitle}</div>
+            <div class="facet-bar-bg">
+              <div class="facet-bar-fill bar-animate" style="background: ${info.color};" data-width="${fScore}%"></div>
+            </div>
+            <div class="facet-score">${fScore}</div>
+            <span class="facet-level facet-level-${fLevel}">${scoreLabelText(fScore)}</span>
           </div>
-          ${facetSections}
         </div>
+        <div class="result-facet-text">${facetText}</div>
       </div>
     `;
   }).join('');
 
+  // Rationale from Claude
+  const rationale = person.rationale && person.rationale[k]
+    ? `<div class="rationale">
+         <div class="rationale-label">Claude's analysis for ${person.name}</div>
+         <p>${person.rationale[k]}</p>
+       </div>`
+    : '';
+
   return `
-    <div class="questions-section">
-      <h2 class="questions-title">120-Question Test Responses</h2>
-      <p class="questions-subtitle">Estimated answers to the IPIP-NEO-PI-R personality inventory</p>
-      ${sections}
+    <div class="domain-detail">
+      <div class="domain-detail-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h3 style="color: ${info.color}">
+          ${rt ? rt.title : info.name}
+          <span class="toggle-icon">&#9660;</span>
+        </h3>
+        <span class="score-badge" style="background: ${info.color}">${score} &mdash; ${scoreLabelText(score)}</span>
+      </div>
+      <div class="domain-detail-body">
+        <div class="domain-description">${domainDesc}</div>
+        <div class="result-text result-text-${level}">${domainResultText}</div>
+        <div class="result-facets-title">Facets</div>
+        ${facetRows}
+        ${rationale}
+      </div>
     </div>
   `;
 }
@@ -369,7 +323,6 @@ function copyShareLink(btn, url) {
       if (msg) msg.textContent = '';
     }, 3000);
   }).catch(() => {
-    // Fallback for older browsers
     const input = document.createElement('input');
     input.value = url;
     document.body.appendChild(input);
@@ -380,13 +333,11 @@ function copyShareLink(btn, url) {
   });
 }
 
-// --- Collapsed state CSS (injected) ---
+// --- Injected CSS ---
 const style = document.createElement('style');
 style.textContent = `
   .domain-detail.collapsed .domain-detail-body { display: none; }
   .domain-detail.collapsed .toggle-icon { transform: rotate(-90deg); }
-  .q-domain-section.q-collapsed .q-domain-body { display: none; }
-  .q-domain-section.q-collapsed .toggle-icon { transform: rotate(-90deg); }
   .toggle-icon { display: inline-block; transition: transform 0.2s; font-size: 0.65em; margin-left: 0.3em; }
   .bar-animate { width: 0; }
 `;
