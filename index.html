@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Big Five Profiles - Famous People</title>
+  <meta name="description" content="Explore estimated Big Five personality profiles for famous historical and contemporary figures.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1>Big Five Personality Profiles</h1>
+    <p>Estimated OCEAN personality profiles for famous people, based on their biographies, writings, and documented behavior.</p>
+    <p class="subtitle">Profiles estimated by Claude. For entertainment and educational purposes &mdash; not clinical assessments.<br>Based on the <a href="https://github.com/rubynor/bigfive-web" target="_blank">bigfive-web</a> IPIP-NEO-PI framework.</p>
+  </header>
+
+  <div class="container">
+    <div id="app"></div>
+  </div>
+
+  <footer>
+    <div class="container">
+      Personality estimates by Claude &bull; IPIP-NEO-PI framework &bull;
+      <a href="https://github.com/rubynor/bigfive-web" target="_blank">bigfive-web</a>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
