@@ -199,11 +199,87 @@ function renderProfile(person) {
 
     ${domainDetails}
 
+    ${renderQuestionResponses(person)}
+
     <div class="share-section">
       <button class="share-btn" onclick="copyShareLink(this, '${shareUrl.replace(/'/g, "\\'")}')">
         Copy Shareable Link
       </button>
       <div class="share-msg" id="shareMsg"></div>
+    </div>
+  `;
+}
+
+// --- Question Responses ---
+
+const CHOICE_LABELS = ['Very Inaccurate', 'Moderately Inaccurate', 'Neutral', 'Moderately Accurate', 'Very Accurate'];
+
+function renderQuestionResponses(person) {
+  const answers = (typeof ANSWERS !== 'undefined') ? ANSWERS[person.id] : null;
+  if (!answers || typeof QUESTIONS === 'undefined') return '';
+
+  // Group questions by domain then facet
+  const grouped = {};
+  DOMAIN_KEYS.forEach(k => { grouped[k] = {}; });
+  QUESTIONS.forEach((q, i) => {
+    if (!grouped[q.d][q.f]) grouped[q.d][q.f] = [];
+    grouped[q.d][q.f].push({ ...q, idx: i, answer: answers[i] });
+  });
+
+  const sections = DOMAIN_KEYS.map(k => {
+    const info = DOMAIN_INFO[k];
+    const facetNames = info.facets;
+
+    const facetSections = Object.keys(grouped[k]).sort((a,b) => a - b).map(f => {
+      const questions = grouped[k][f];
+      const rows = questions.map(q => {
+        const score = q.k === 'plus' ? q.answer : (6 - q.answer);
+        const dots = [1,2,3,4,5].map(v =>
+          `<span class="likert-dot ${v === q.answer ? 'active' : ''}" style="${v === q.answer ? 'background:' + info.color : ''}" title="${CHOICE_LABELS[v-1]}">${v === q.answer ? v : ''}</span>`
+        ).join('');
+
+        return `
+          <div class="q-row">
+            <div class="q-text">${q.t}</div>
+            <div class="q-likert">${dots}</div>
+            <div class="q-score-val" style="color: ${info.color}">${score}</div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="q-facet-group">
+          <div class="q-facet-name">${facetNames[f - 1]}</div>
+          ${rows}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="q-domain-section">
+        <div class="q-domain-header" onclick="this.parentElement.classList.toggle('q-collapsed')">
+          <h3 style="color: ${info.color}">
+            ${info.name} &mdash; Question Responses
+            <span class="toggle-icon">&#9660;</span>
+          </h3>
+        </div>
+        <div class="q-domain-body">
+          <div class="q-legend">
+            <span>1 = Very Inaccurate</span>
+            <span>3 = Neutral</span>
+            <span>5 = Very Accurate</span>
+          </div>
+          ${facetSections}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="questions-section">
+      <h2 class="questions-title">120-Question Test Responses</h2>
+      <p class="questions-subtitle">Estimated answers to the IPIP-NEO-PI-R personality inventory</p>
+      ${sections}
     </div>
   `;
 }
@@ -309,6 +385,8 @@ const style = document.createElement('style');
 style.textContent = `
   .domain-detail.collapsed .domain-detail-body { display: none; }
   .domain-detail.collapsed .toggle-icon { transform: rotate(-90deg); }
+  .q-domain-section.q-collapsed .q-domain-body { display: none; }
+  .q-domain-section.q-collapsed .toggle-icon { transform: rotate(-90deg); }
   .toggle-icon { display: inline-block; transition: transform 0.2s; font-size: 0.65em; margin-left: 0.3em; }
   .bar-animate { width: 0; }
 `;
